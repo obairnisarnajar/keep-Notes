@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="bg-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">Wazirone Notes</a>
+        <form class="form-inline ml-auto">
+            <input id="searchInput" class="form-control mr-sm-2" type="text" placeholder="Search" aria-label="Search">
+            <button class="btn btn-outline-success my-2 my-sm-0" onclick="searchNotes()">Search</button>
+        </form>
+    </nav>
+    <div class="container mt-5">
+        <div class="row">
+            <!-- Left 8 columns for title, take a note, and add note -->
+            <div class="col-md-8">
+                <div class="card bg-white p-3 rounded">
+                    <div class="form-group">
+                        <input type="text" id="addTitle" class="form-control mb-2" placeholder="Title">
+                    </div>
+                    <div class="form-group">
+                        <textarea id="addText" class="form-control mb-2" rows="3" placeholder="Take a note.."></textarea>
+                    </div>
+                    <button id="addNote" class="btn btn-primary" onclick="addNotes()">Add Note</button>
+                </div>
+            </div>
+
+            <!-- Right 4 columns for other functionalities -->
+            <div class="col-md-4">
+                <div class="card bg-white p-3 rounded">
+                    <!-- other functionalities here -->
+                    <div id="pagination" class="mt-3">
+                        <button id="prevPage" class="btn btn-secondary" onclick="prevPage()">Previous</button>
+                        <button id="nextPage" class="btn btn-secondary" onclick="nextPage()">Next</button>
+                    </div>
+                    <!-- Pop-up element -->
+                    <div id="popup" class="alert alert-warning mt-3" style="display: none;">Please enter your note!</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes display area -->
+        <div id="notes" class="mt-4"></div>
+    </div>
+
+    <script>
+        const addTitle = document.getElementById('addTitle');
+        const addText = document.getElementById('addText');
+        const notesDiv = document.getElementById('notes');
+        const prevPageButton = document.getElementById('prevPage');
+        const nextPageButton = document.getElementById('nextPage');
+        const popup = document.getElementById('popup');
+        let currentPage = 1;
+        const notesPerPage = 6;
+
+        showNotes();
+
+        function addNotes() {
+            let notes = getNotesFromStorage();
+
+            if (addText.value === '') {
+                // Show the pop-up if the note is empty
+                showPopup('Please enter your note!');
+                return;
+            }
+
+            const noteObj = {
+                title: addTitle.value,
+                text: addText.value,
+                pinned: false,
+            }
+            addTitle.value = '';
+            addText.value = '';
+
+            notes.push(noteObj);
+            updateNotesInStorage(notes);
+            showNotes();
+        }
+
+        function showPopup(message) {
+            const popup = document.createElement('div');
+            popup.className = 'alert alert-warning mt-3';
+            popup.textContent = message;
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn btn-secondary float-right';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = function () {
+                document.body.removeChild(popup);
+            };
+
+            popup.appendChild(cancelBtn);
+            document.body.appendChild(popup);
+
+            setTimeout(() => {
+                document.body.removeChild(popup);
+            }, 5000); // Adjust the duration as needed
+        }
+
+        function showNotes() {
+            let notes = getNotesFromStorage();
+            notes.forEach((note, index) => {
+                note.index = index; // Add index property to each note
+            });
+
+            const startIndex = (currentPage - 1) * notesPerPage;
+            const endIndex = startIndex + notesPerPage;
+            const currentNotes = notes.slice(startIndex, endIndex);
+
+            let notesHTML = '';
+            for (let i = 0; i < currentNotes.length; i++) {
+                notesHTML += `<div class="card mb-3">
+                                <div class="card-body">
+                                    <button class="btn btn-danger float-right" onclick="deleteNote(${startIndex + i})">Delete</button>
+                                    <button class="btn btn-info float-right mr-2" onclick="togglePin(${startIndex + i})">${currentNotes[i].pinned ? 'Unpin' : 'Pin'}</button>
+                                    <button class="btn btn-warning float-right mr-2" onclick="editNote(${startIndex + i})">Edit</button>
+                                    <h5 class="card-title">${currentNotes[i].title === "" ? 'Note' : currentNotes[i].title}</h5>
+                                    <p class="card-text">${currentNotes[i].text}</p>
+                                </div>
+                            </div>`;
+            }
+
+            notesDiv.innerHTML = notesHTML;
+
+            //  pagination buttons
+            prevPageButton.disabled = currentPage === 1;
+            nextPageButton.disabled = endIndex >= notes.length;
+        }
+
+        function deleteNote(ind) {
+            let notes = getNotesFromStorage();
+            notes.splice(ind, 1);
+            updateNotesInStorage(notes);
+            showNotes();
+        }
+
+        function togglePin(ind) {
+            let notes = getNotesFromStorage();
+            notes[ind].pinned = !notes[ind].pinned;
+
+            // If pinned, move to the top; if unpinned, move to its original position
+            if (notes[ind].pinned) {
+                const pinnedNote = notes.splice(ind, 1)[0];
+                notes.unshift(pinnedNote);
+            } else {
+                const unpinnedNote = notes.splice(ind, 1)[0];
+                const originalIndex = notes.findIndex(note => !note.pinned);
+                notes.splice(originalIndex, 0, unpinnedNote);
+            }
+
+            updateNotesInStorage(notes);
+            showNotes();
+        }
+
+        function editNote(ind) {
+            let notes = getNotesFromStorage();
+            const editedTitle = prompt("Edit Title:", notes[ind].title);
+            const editedText = prompt("Edit Text:", notes[ind].text);
+
+            if (editedTitle !== null && editedText !== null) {
+                notes[ind].title = editedTitle;
+                notes[ind].text = editedText;
+
+                updateNotesInStorage(notes);
+                showNotes();
+            }
+        }
+
+        function getNotesFromStorage() {
+            let notes = localStorage.getItem('notes');
+            return notes ? JSON.parse(notes) : [];
+        }
+
+        function updateNotesInStorage(notes) {
+            localStorage.setItem('notes', JSON.stringify(notes));
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                showNotes();
+            }
+        }
+
+        function nextPage() {
+            let notes = getNotesFromStorage();
+            const maxPages = Math.ceil(notes.length / notesPerPage);
+            if (currentPage < maxPages) {
+                currentPage++;
+                showNotes();
+            }
+        }
+
+        function searchNotes() {
+            let searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            let notes = getNotesFromStorage();
+            let matchingNotes = notes.filter(note => note.title.toLowerCase().includes(searchTerm) || note.text.toLowerCase().includes(searchTerm));
+
+            if (matchingNotes.length > 0) {
+                showSearchResults(matchingNotes);
+                showPopup('Search Results');
+            } else {
+                // Display a message if no matching notes are found
+                notesDiv.innerHTML = '<p>No matching notes found.</p>';
+            }
+        }
+
+        function showSearchResults(matchingNotes) {
+            let notesHTML = '';
+            for (let i = 0; i < matchingNotes.length; i++) {
+                notesHTML += `<div class="card mb-3">
+                                <div class="card-body">
+                                    <button class="btn btn-danger float-right" onclick="deleteNote(${matchingNotes[i].index})">Delete</button>
+                                    <button class="btn btn-info float-right mr-2" onclick="togglePin(${matchingNotes[i].index})">${matchingNotes[i].pinned ? 'Unpin' : 'Pin'}</button>
+                                    <button class="btn btn-warning float-right mr-2" onclick="editNote(${matchingNotes[i].index})">Edit</button>
+                                    <h5 class="card-title">${matchingNotes[i].title === "" ? 'Note' : matchingNotes[i].title}</h5>
+                                    <p class="card-text">${matchingNotes[i].text}</p>
+                                </div>
+                            </div>`;
+            }
+
+            notesDiv.innerHTML = notesHTML;
+        }
+
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+</body>
+
+</html>

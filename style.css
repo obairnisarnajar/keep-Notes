@@ -1,0 +1,56 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.container {
+    min-height: 100vh;
+    width: 100vw;
+    padding: 23px;
+    background-color: white;
+    border-radius: 25px;
+}
+
+#input-box {
+    border: 1px solid black;
+    padding: 23px;
+}
+
+input,
+textarea {
+    width: 100%;
+    background-color: transparent;
+    border: none;
+    outline: none;
+    margin-top: 6px;
+    color: black; /* Changed text color to black */
+}
+
+button {
+    background: transparent;
+    color: black; /* Changed text color to black */
+    padding: 8px 12px;
+    border: 1px solid black;
+}
+
+#notes {
+    padding: 23px;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.note {
+    width: 300px;
+    color: #333; /* Changed text color to a darker shade */
+    overflow-wrap: break-word;
+    margin: 12px;
+    padding: 12px;
+    border: 1px solid black;
+    background: white; /* Changed background color to white */
+}
+
+.deleteNote {
+    float: right;
+    color: red; /* Changed delete button color to red */
+}
